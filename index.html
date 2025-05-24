@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=1280, initial-scale=1.0">
+  <title>Electron Three.js Game Engine</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="main-container">
+    <div id="top-container">
+      <div id="hierarchy">
+        <div class="panel-header">
+          <h2>Hierarchy</h2>
+        </div>
+        <div class="panel-content">
+          <ul id="scene-list"></ul>
+        </div>
+      </div>
+      
+      <div id="viewport">
+        <canvas id="three-canvas"></canvas>
+      </div>
+
+      <div id="inspector">
+        <div class="panel-header">
+          <h2>Inspector</h2>
+        </div>
+        <div class="panel-content" id="inspector-content">
+          <div id="primitives">
+            <h3>Primitives</h3>
+            <button data-primitive="cube">Cube</button>
+            <button data-primitive="sphere">Sphere</button>
+            <button data-primitive="cylinder">Cylinder</button>
+            <button data-primitive="plane">Plane</button>
+          </div>
+          <div id="lights">
+            <h3>Lights</h3>
+            <button data-light="directional">Directional Light</button>
+            <button data-light="point">Point Light</button>
+            <button data-light="spot">Spot Light</button>
+          </div>
+          <div id="materials">
+            <h3>Materials</h3>
+            <button id="create-material">Create Material</button>
+            <div id="materials-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="project-explorer">
+      <div class="panel-header">
+        <h2>Project Explorer</h2>
+        <button id="import-files">Import</button>
+      </div>
+      <div class="panel-content">
+        <div class="project-files-grid">
+          <!-- Project files will be listed here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="renderer.js"></script>
+</body>
+</html> 
