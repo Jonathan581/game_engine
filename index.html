@@ -26,28 +26,30 @@
       <div id="inspector">
         <div class="panel-header">
           <h2>Inspector</h2>
+          <div class="tab-buttons">
+            <button id="tab-properties" class="tab-btn active">Properties</button>
+            <button id="tab-lighting" class="tab-btn">Lighting</button>
+          </div>
         </div>
-        <div class="panel-content" id="inspector-content">
-          <div id="gameobject-menu" class="dropdown">
-            <button id="gameobject-menu-btn">GameObject</button>
-            <div id="gameobject-submenu" class="dropdown-content" style="display:none;">
-              <button data-primitive="cube">Cube</button>
-              <button data-primitive="sphere">Sphere</button>
-              <button data-primitive="cylinder">Cylinder</button>
-              <button data-primitive="plane">Plane</button>
-            </div>
+        <div class="panel-content tab-content" id="tab-content-properties">
+          <!-- Properties content will be rendered here by JS -->
+        </div>
+        <div class="panel-content tab-content" id="tab-content-lighting" style="display:none;">
+          <h3>Skybox</h3>
+          <label>Upload 6 images (cubemap) or 1 equirectangular image:</label>
+          <input type="file" id="skybox-input" multiple accept="image/*">
+          <div id="skybox-preview"></div>
+          <h3>Ambient Light</h3>
+          <div class="row">
+            <label for="ambient-color">Color:</label>
+            <input type="color" id="ambient-color" value="#ffffff">
           </div>
-          <div id="lights">
-            <h3>Lights</h3>
-            <button data-light="directional">Directional Light</button>
-            <button data-light="point">Point Light</button>
-            <button data-light="spot">Spot Light</button>
+          <div class="row">
+            <label for="ambient-intensity">Intensity:</label>
+            <input type="range" id="ambient-intensity" min="0" max="5" step="0.01" value="1">
+            <span id="ambient-intensity-value">1.00</span>
           </div>
-          <div id="materials">
-            <h3>Materials</h3>
-            <button id="create-material">Create Material</button>
-            <div id="materials-list"></div>
-          </div>
+          <button id="apply-lighting-btn">Apply</button>
         </div>
       </div>
     </div>

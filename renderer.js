@@ -142,6 +142,10 @@ function createLight(type) {
       light.position.set(0, 8, 8);
       helper = new THREE.SpotLightHelper(light, 0xffff00);
       break;
+    case 'ambient':
+      light = new THREE.AmbientLight(0xffffff, 1);
+      helper = null;
+      break;
     default:
       return;
   }
@@ -190,7 +194,7 @@ document.querySelectorAll('button[data-light]').forEach(btn => {
     selectGameObject(go.id);
   };
 });
-document.getElementById('create-material').onclick = createMaterial;
+// document.getElementById('create-material').onclick = createMaterial;
 
 // --- Hierarchy Helpers ---
 function getRootGameObjects() {
@@ -207,6 +211,19 @@ function updateSceneList() {
   const list = document.getElementById('scene-list');
   list.innerHTML = '';
   getRootGameObjects().forEach(go => renderGameObjectTree(go, list, 0));
+  // Allow dropping at root to unparent
+  list.ondragover = (e) => { e.preventDefault(); list.classList.add('drag-over'); };
+  list.ondragleave = (e) => { list.classList.remove('drag-over'); };
+  list.ondrop = (e) => {
+    e.preventDefault();
+    list.classList.remove('drag-over');
+    const draggedId = parseInt(e.dataTransfer.getData('text/plain'));
+    const draggedGo = gameObjects.find(g => g.id === draggedId);
+    if (!draggedGo) return;
+    if (draggedGo.parent) draggedGo.parent.removeChild(draggedGo);
+    if (!gameObjects.includes(draggedGo)) gameObjects.push(draggedGo);
+    updateSceneList();
+  };
 }
 
 function renderGameObjectTree(go, parentElem, depth) {
@@ -284,8 +301,68 @@ function selectGameObject(id) {
   }
 }
 
+// --- Inspector Tab Logic ---
+document.addEventListener('DOMContentLoaded', () => {
+  // Inspector Tab Logic
+  const tabPropertiesBtn = document.getElementById('tab-properties');
+  const tabLightingBtn = document.getElementById('tab-lighting');
+  const tabContentProperties = document.getElementById('tab-content-properties');
+  const tabContentLighting = document.getElementById('tab-content-lighting');
+
+  function showTab(tab) {
+    if (tab === 'properties') {
+      tabPropertiesBtn.classList.add('active');
+      tabLightingBtn.classList.remove('active');
+      tabContentProperties.classList.add('active');
+      tabContentLighting.classList.remove('active');
+    } else {
+      tabPropertiesBtn.classList.remove('active');
+      tabLightingBtn.classList.add('active');
+      tabContentProperties.classList.remove('active');
+      tabContentLighting.classList.add('active');
+    }
+  }
+  tabPropertiesBtn.onclick = () => showTab('properties');
+  tabLightingBtn.onclick = () => showTab('lighting');
+  showTab('properties');
+
+  // Lighting Tab Logic
+  const ambientColorInput = document.getElementById('ambient-color');
+  const ambientIntensityInput = document.getElementById('ambient-intensity');
+  const ambientIntensityValue = document.getElementById('ambient-intensity-value');
+  ambientIntensityInput.addEventListener('input', () => {
+    ambientIntensityValue.textContent = parseFloat(ambientIntensityInput.value).toFixed(2);
+  });
+  document.getElementById('apply-lighting-btn').onclick = () => {
+    const color = ambientColorInput.value;
+    const intensity = parseFloat(ambientIntensityInput.value);
+    const files = document.getElementById('skybox-input').files;
+    handleLightingSettings({ color, intensity, files: Array.from(files).map(f => f.path) });
+  };
+});
+
+// --- Lighting Tab Logic ---
+const ambientColorInput = document.getElementById('ambient-color');
+const ambientIntensityInput = document.getElementById('ambient-intensity');
+const ambientIntensityValue = document.getElementById('ambient-intensity-value');
+ambientIntensityInput.addEventListener('input', () => {
+  ambientIntensityValue.textContent = parseFloat(ambientIntensityInput.value).toFixed(2);
+});
+document.getElementById('apply-lighting-btn').onclick = () => {
+  const color = ambientColorInput.value;
+  const intensity = parseFloat(ambientIntensityInput.value);
+  const files = document.getElementById('skybox-input').files;
+  handleLightingSettings({ color, intensity, files: Array.from(files).map(f => f.path) });
+};
+
+// --- Lighting menu triggers Lighting tab ---
+if (window.api && window.api.onLightingMenuOpen) {
+  window.api.onLightingMenuOpen(() => showTab('lighting'));
+}
+
+// --- Render inspector content into tab-content-properties ---
 function updateInspector() {
-  const content = document.getElementById('inspector-content');
+  const content = tabContentProperties;
   content.innerHTML = '';
   const go = gameObjects.find(g => g.id === selectedGameObjectId);
   if (!go) return;
@@ -415,21 +492,56 @@ function duplicateGameObject(go) {
 
 // --- Animation Loop ---
 function updateGameObjects() {
-  gameObjects.forEach(go => {
-    const meshComp = go.getComponent(MeshComponent);
+  // Recursively update world transforms and apply to meshes/lights
+  function updateRecursive(go) {
     const transform = go.getComponent(Transform);
-    if (meshComp && transform) {
-      meshComp.mesh.position.copy(transform.position);
-      meshComp.mesh.rotation.copy(transform.rotation);
-      meshComp.mesh.scale.copy(transform.scale);
+    transform.updateWorldMatrix();
+    const meshComp = go.getComponent(MeshComponent);
+    if (meshComp) {
+      meshComp.mesh.position.copy(transform.getWorldPosition());
+      meshComp.mesh.quaternion.copy(transform.getWorldQuaternion());
+      meshComp.mesh.scale.copy(transform.getWorldScale());
     }
-  });
+    const lightComp = go.getComponent(LightComponent);
+    if (lightComp) {
+      lightComp.light.position.copy(transform.getWorldPosition());
+      lightComp.light.quaternion.copy(transform.getWorldQuaternion());
+    }
+    go.children.forEach(child => updateRecursive(child));
+  }
+  getRootGameObjects().forEach(go => updateRecursive(go));
 }
 
 function animate() {
   requestAnimationFrame(animate);
   updateGameObjects();
   controls.update();
+
+  // --- Keep transformControls in sync with selected object's world transform ---
+  const go = gameObjects.find(g => g.id === selectedGameObjectId);
+  if (go) {
+    const meshComp = go.getComponent(MeshComponent);
+    if (meshComp) {
+      // Always update mesh to match transform (already done in updateGameObjects)
+      // But also update transformControls to follow mesh
+      if (transformControls.object !== meshComp.mesh) {
+        transformControls.attach(meshComp.mesh);
+        transformControls.visible = true;
+      } else {
+        // Force update transformControls' position/quaternion/scale
+        meshComp.mesh.position.copy(go.getComponent(Transform).getWorldPosition());
+        meshComp.mesh.quaternion.copy(go.getComponent(Transform).getWorldQuaternion());
+        meshComp.mesh.scale.copy(go.getComponent(Transform).getWorldScale());
+      }
+    } else {
+      transformControls.detach();
+      transformControls.visible = false;
+    }
+  } else {
+    transformControls.detach();
+    transformControls.visible = false;
+  }
+
   // Update helpers if needed
   gameObjects.forEach(go => {
     const comp = go.components.find(c => c && c.type === 'Light' && c.helper);
@@ -449,7 +561,7 @@ createPrimitive('plane');
 
 animate();
 updateSceneList();
-updateMaterialsList();
+// updateMaterialsList();
 
 // --- Raycasting for Selection ---
 const raycaster = new THREE.Raycaster();
@@ -473,7 +585,7 @@ function onPointerDown(event) {
   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
-  // Collect all meshes
+  // Collect all meshes (including children)
   const meshes = [];
   gameObjects.forEach(go => {
     const meshComp = go.getComponent(MeshComponent);
@@ -494,7 +606,7 @@ function onPointerDown(event) {
   }
 }
 
-// --- Sync TransformControls to GameObject Transform ---
+// --- Sync TransformControls to GameObject Transform (local) ---
 transformControls.addEventListener('objectChange', () => {
   const mesh = transformControls.object;
   if (!mesh) return;
@@ -506,10 +618,30 @@ transformControls.addEventListener('objectChange', () => {
   if (!go) return;
   const transform = go.getComponent(Transform);
   if (!transform) return;
-  // Sync mesh transform to GameObject Transform
-  transform.position.copy(mesh.position);
-  transform.rotation.copy(mesh.rotation);
-  transform.scale.copy(mesh.scale);
+  // Get parent world matrix
+  let parentMatrix = new THREE.Matrix4();
+  if (go.parent) {
+    const parentTransform = go.parent.getComponent(Transform);
+    parentTransform.updateWorldMatrix();
+    parentMatrix.copy(parentTransform._worldMatrix);
+  } else {
+    parentMatrix.identity();
+  }
+  // Compute local transform from mesh's world transform
+  const worldPos = mesh.position.clone();
+  const worldQuat = mesh.quaternion.clone();
+  const worldScale = mesh.scale.clone();
+  const invParent = new THREE.Matrix4().copy(parentMatrix).invert();
+  const localMatrix = new THREE.Matrix4();
+  localMatrix.compose(worldPos, worldQuat, worldScale);
+  localMatrix.premultiply(invParent);
+  const pos = new THREE.Vector3();
+  const quat = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  localMatrix.decompose(pos, quat, scale);
+  transform.position.copy(pos);
+  transform.rotation.setFromQuaternion(quat);
+  transform.scale.copy(scale);
   // If this is the selected object, update inspector
   if (go.id === selectedGameObjectId) updateInspector();
 });
@@ -721,23 +853,6 @@ function showContextMenu(event, fileName) {
   );
 }
 
-// --- GameObject Menu Dropdown Logic ---
-const gameObjectMenuBtn = document.getElementById('gameobject-menu-btn');
-const gameObjectSubmenu = document.getElementById('gameobject-submenu');
-if (gameObjectMenuBtn && gameObjectSubmenu) {
-  gameObjectMenuBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isOpen = gameObjectSubmenu.style.display === 'block';
-    gameObjectSubmenu.style.display = isOpen ? 'none' : 'block';
-  });
-  // Close submenu when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!gameObjectMenuBtn.contains(e.target) && !gameObjectSubmenu.contains(e.target)) {
-      gameObjectSubmenu.style.display = 'none';
-    }
-  });
-}
-
 // --- Keyboard Shortcuts for TransformControls ---
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
@@ -749,3 +864,82 @@ document.addEventListener('keydown', (e) => {
     transformControls.setMode('scale');
   }
 });
+
+// Listen for native menu primitive creation
+if (window.api && window.api.onCreatePrimitive) {
+  window.api.onCreatePrimitive((type) => {
+    const go = createPrimitive(type);
+    if (go) selectGameObject(go.id);
+  });
+}
+
+// Listen for native menu light creation
+if (window.api && window.api.onCreateLight === undefined) {
+  window.api.onCreateLight = (callback) => {
+    if (window.api && window.api.onCreatePrimitive) {
+      // fallback for contextBridge
+      window.api.onCreatePrimitive((type) => {
+        if (['directional','point','spot','ambient'].includes(type)) callback(type);
+      });
+    }
+  };
+}
+if (window.api && window.api.onCreateLight) {
+  window.api.onCreateLight((type) => {
+    const go = createLight(type);
+    if (go) selectGameObject(go.id);
+  });
+}
+
+// --- Lighting Settings (Skybox & Ambient Light) ---
+if (window.api && window.api.applyLightingSettings) {
+
+
+}
+
+// Actually listen for the event
+if (window.api && window.api.onApplyLightingSettings) {
+  window.api.onApplyLightingSettings(handleLightingSettings);
+}
+
+// Or, if using contextBridge and preload.js:
+if (window.api && window.api.on) {
+  window.api.on('apply-lighting-settings', (event, settings) => handleLightingSettings(settings));
+}
+
+let ambientLightGO = null;
+function handleLightingSettings(settings) {
+  console.log("handleLightingSettings", settings);
+  // Skybox
+  if (settings.files && settings.files.length > 0) {
+    if (settings.files.length === 6) {
+      // Cubemap
+      const loader = new THREE.CubeTextureLoader();
+      scene.background = loader.load(settings.files);
+    } else if (settings.files.length === 1) {
+      // Equirectangular
+      const loader = new THREE.TextureLoader();
+      loader.load(settings.files[0], (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        scene.background = texture;
+      });
+    }
+  }
+  // Ambient Light
+  if (settings.color && settings.intensity !== undefined) {
+    if (!ambientLightGO) {
+      ambientLightGO = createLight('ambient');
+    }
+    const lightComp = ambientLightGO.getComponent(LightComponent);
+    if (lightComp) {
+      lightComp.setColor(settings.color);
+      lightComp.setIntensity(settings.intensity);
+    }
+  }
+}
+
+// At the top of renderer.js, after all DOM is loaded:
+const tabPropertiesBtn = document.getElementById('tab-properties');
+const tabLightingBtn = document.getElementById('tab-lighting');
+const tabContentProperties = document.getElementById('tab-content-properties');
+const tabContentLighting = document.getElementById('tab-content-lighting');

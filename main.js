@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, Menu } = require('electron');
 const path = require('path');
 const fs = require("fs");
 const os = require("os");
@@ -13,9 +13,10 @@ function createWindow() {
     width: 1280,
     height: 800,
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: true,
       contextIsolation: true,
-      sandbox: false,
+      devTools: true,
+      sandbox: true,
       preload: path.join(__dirname, "preload.js"),
       webSecurity: false // Allow loading local resources
     },
@@ -23,7 +24,7 @@ function createWindow() {
 
   win.loadURL('http://localhost:5173');
   // Uncomment the following line for debugging
-  // win.webContents.openDevTools();
+  win.webContents.openDevTools();
   return win;
 }
 
@@ -42,6 +43,74 @@ app.whenReady().then(() => {
   });
 
   mainWindow = createWindow();
+
+  // --- Native Menu Setup ---
+  const template = [
+    {
+      label: 'GameObject',
+      submenu: [
+        {
+          label: 'Cube',
+          click: () => {
+            mainWindow.webContents.send('create-primitive', 'cube');
+          }
+        },
+        {
+          label: 'Sphere',
+          click: () => {
+            mainWindow.webContents.send('create-primitive', 'sphere');
+          }
+        },
+        {
+          label: 'Cylinder',
+          click: () => {
+            mainWindow.webContents.send('create-primitive', 'cylinder');
+          }
+        },
+        {
+          label: 'Plane',
+          click: () => {
+            mainWindow.webContents.send('create-primitive', 'plane');
+          }
+        }
+      ]
+    },
+    {
+      label: 'Lighting',
+      submenu: [
+        {
+          label: 'Lighting Settings...',
+          click: () => {
+            // Instead of opening a window, send event to renderer to switch tab
+            if (mainWindow) mainWindow.webContents.send('create-primitive', '__open_lighting_tab__');
+          }
+        },
+        {
+          label: 'Add Light',
+          submenu: [
+            {
+              label: 'Directional Light',
+              click: () => mainWindow.webContents.send('create-light', 'directional')
+            },
+            {
+              label: 'Point Light',
+              click: () => mainWindow.webContents.send('create-light', 'point')
+            },
+            {
+              label: 'Spot Light',
+              click: () => mainWindow.webContents.send('create-light', 'spot')
+            },
+            {
+              label: 'Ambient Light',
+              click: () => mainWindow.webContents.send('create-light', 'ambient')
+            }
+          ]
+        }
+      ]
+    }
+  ];
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
 });
 
 app.on('window-all-closed', () => {
@@ -147,3 +216,9 @@ ipcMain.handle(
     return false;
   }
 );
+
+ipcMain.on('apply-lighting-settings', (event, settings) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('apply-lighting-settings', settings);
+  }
+});

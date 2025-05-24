@@ -16,4 +16,7 @@ contextBridge.exposeInMainWorld("api", {
     }),
   deleteProjectFile: (projectName, fileName) =>
     ipcRenderer.invoke("delete-project-file", { projectName, fileName }),
+  onCreatePrimitive: (callback) => ipcRenderer.on('create-primitive', (event, type) => callback(type)),
+  onCreateLight: (callback) => ipcRenderer.on('create-light', (event, type) => callback(type)),
+  applyLightingSettings: (settings) => ipcRenderer.send('apply-lighting-settings', settings),
 }); 
