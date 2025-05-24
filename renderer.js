@@ -20,6 +20,11 @@ renderer.setClearColor(0x222222);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x222222);
 
+//setup the ambient light settings 
+const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+scene.add(ambientLight);
+
+
 // Add grid helper
 const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
 gridHelper.position.y = 0;
@@ -129,17 +134,17 @@ function createLight(type) {
   switch (type) {
     case 'directional':
       light = new THREE.DirectionalLight(0xffffff, 1);
-      light.position.set(5, 10, 7);
+      light.position.set(5, 5, 7);
       helper = new THREE.DirectionalLightHelper(light, 1, 0xffff00);
       break;
     case 'point':
       light = new THREE.PointLight(0xffffff, 1, 100);
-      light.position.set(0, 5, 0);
+      light.position.set(0, 0, 0);
       helper = new THREE.PointLightHelper(light, 0.5, 0xffff00);
       break;
     case 'spot':
       light = new THREE.SpotLight(0xffffff, 1);
-      light.position.set(0, 8, 8);
+      light.position.set(0, 0, 0);
       helper = new THREE.SpotLightHelper(light, 0xffff00);
       break;
     case 'ambient':
@@ -149,7 +154,7 @@ function createLight(type) {
     default:
       return;
   }
-  scene.add(light);
+  scene.add(light.target);
   if (helper) scene.add(helper);
   const go = createGameObject(type.charAt(0).toUpperCase() + ' Light');
   go.addComponent(new LightComponent(go, light, helper));
@@ -289,6 +294,7 @@ function selectGameObject(id) {
       transformControls.attach(meshComp.mesh);
       transformControls.visible = true;
     } else if (lightComp) {
+      // console.log(scene);
       transformControls.attach(lightComp.light);
       transformControls.visible = true;
     } else {
@@ -465,7 +471,13 @@ function deleteGameObject(go) {
   go.children.slice().forEach(child => deleteGameObject(child));
   // Remove mesh from scene
   const meshComp = go.getComponent(MeshComponent);
+  const lightComp = go.getComponent(LightComponent);  
   if (meshComp) scene.remove(meshComp.mesh);
+  if (lightComp){ scene.remove(lightComp.light);
+  //delete light helper
+  if (lightComp.helper) scene.remove(lightComp.helper);
+  }
+
 }
 
 function duplicateGameObject(go) {
