@@ -254,4 +254,58 @@ h3:first-child {
 
 .context-menu div:hover {
   background: #3a3f4a;
+}
+
+/* Dropdown Menu Styles */
+.dropdown {
+  position: relative;
+  display: block;
+  margin-bottom: 16px;
+}
+
+#gameobject-menu-btn {
+  width: 100%;
+  background: #2d313a;
+  color: #eee;
+  border: none;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 1em;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+#gameobject-menu-btn:hover {
+  background: #3a3f4a;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  min-width: 160px;
+  background: #23272e;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 10;
+  border-radius: 4px;
+  padding: 8px 0;
+}
+
+.dropdown-content button {
+  width: 100%;
+  background: none;
+  color: #eee;
+  border: none;
+  border-radius: 0;
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.dropdown-content button:hover {
+  background: #3a3f4a;
 } 

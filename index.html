@@ -28,12 +28,14 @@
           <h2>Inspector</h2>
         </div>
         <div class="panel-content" id="inspector-content">
-          <div id="primitives">
-            <h3>Primitives</h3>
-            <button data-primitive="cube">Cube</button>
-            <button data-primitive="sphere">Sphere</button>
-            <button data-primitive="cylinder">Cylinder</button>
-            <button data-primitive="plane">Plane</button>
+          <div id="gameobject-menu" class="dropdown">
+            <button id="gameobject-menu-btn">GameObject</button>
+            <div id="gameobject-submenu" class="dropdown-content" style="display:none;">
+              <button data-primitive="cube">Cube</button>
+              <button data-primitive="sphere">Sphere</button>
+              <button data-primitive="cylinder">Cylinder</button>
+              <button data-primitive="plane">Plane</button>
+            </div>
           </div>
           <div id="lights">
             <h3>Lights</h3>

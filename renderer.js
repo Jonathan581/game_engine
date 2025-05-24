@@ -720,3 +720,32 @@ function showContextMenu(event, fileName) {
     { once: true }
   );
 }
+
+// --- GameObject Menu Dropdown Logic ---
+const gameObjectMenuBtn = document.getElementById('gameobject-menu-btn');
+const gameObjectSubmenu = document.getElementById('gameobject-submenu');
+if (gameObjectMenuBtn && gameObjectSubmenu) {
+  gameObjectMenuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = gameObjectSubmenu.style.display === 'block';
+    gameObjectSubmenu.style.display = isOpen ? 'none' : 'block';
+  });
+  // Close submenu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!gameObjectMenuBtn.contains(e.target) && !gameObjectSubmenu.contains(e.target)) {
+      gameObjectSubmenu.style.display = 'none';
+    }
+  });
+}
+
+// --- Keyboard Shortcuts for TransformControls ---
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+  if (e.key === 'w' || e.key === 'W') {
+    transformControls.setMode('translate');
+  } else if (e.key === 'e' || e.key === 'E') {
+    transformControls.setMode('rotate');
+  } else if (e.key === 'r' || e.key === 'R') {
+    transformControls.setMode('scale');
+  }
+});
